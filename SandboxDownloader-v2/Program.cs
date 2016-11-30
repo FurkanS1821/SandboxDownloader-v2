@@ -16,36 +16,39 @@ namespace AutoCompilerForGameServer
         private static void Main()
         {
             Console.WriteLine("Welcome to my GameServer updater!");
-
+            var lastCommit = GetLastCommitMessageFromWeb();
             if (!File.Exists(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt")))
             { // First run
-                File.AppendAllText(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt"), GetLastCommitMessageFromWeb());
-                UpdateAndCompileServer();
+                DownloadAndCompileServer();
+                File.AppendAllText(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt"), lastCommit);
             }
             else if (File.ReadAllText(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt")) != GetLastCommitMessageFromWeb())
             { // Update required
                 Console.WriteLine("Update found. Updating.");
-                UpdateAndCompileServer();
+                FetchAndCompileServer();
+                File.WriteAllText(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt"), lastCommit);
             }
             else
             { // Updated already
-                Console.Write("Your GameServer is already updated.\n" +
-                    "If you shutdown this program while things were downloading, please delete \"LastCommitMessage.txt\" and \"CurrentRepository\" folder and restart this application.\n" +
-                    "Press any key to exit... ");
-                Console.ReadKey(false);
+                Console.Write("Your GameServer is already updated.\nPress any key to exit... ");
+                Console.ReadKey(true);
                 return;
             }
 
             Console.Write("Everything is completed.\nPress any key to exit... ");
-            Console.ReadKey(false);
+            Console.ReadKey(true);
         }
 
-        private static void UpdateAndCompileServer()
+        private static void DownloadAndCompileServer()
         {
             var path = Path.Combine(ExecutingDirectory, "CurrentRepository");
 
             var cloneOptions = new CloneOptions { BranchName = "master", RecurseSubmodules = true };
             Console.Write("Cloning GameServer... ");
+            if (Directory.Exists(path))
+            {
+                DeleteDirectory(path);
+            }
             Repository.Clone("https://github.com/LeagueSandbox/GameServer.git", path, cloneOptions);
             Console.WriteLine("done.");
 
@@ -57,7 +60,7 @@ namespace AutoCompilerForGameServer
             Console.Write("Restoring nuget packages... ");
             var nugetProcess = new Process
             {
-                StartInfo = new ProcessStartInfo(ExecutingDirectory + "\\NuGet.exe", $"restore {path}")
+                StartInfo = new ProcessStartInfo(Path.Combine(ExecutingDirectory, "NuGet.exe"), $"restore {path}")
             };
             nugetProcess.Start();
             nugetProcess.WaitForExit();
@@ -75,7 +78,58 @@ namespace AutoCompilerForGameServer
             msbuildProcess.Start();
             msbuildProcess.WaitForExit();
             Console.WriteLine("done.");
-            MoveOrDeleteTempStuff();
+            DoThingsWithTempStuff();
+        }
+
+        private static void FetchAndCompileServer()
+        {
+            var path = Path.Combine(ExecutingDirectory, "CurrentRepository");
+            if (Directory.Exists(path))
+            {
+                DeleteDirectory(path);
+            }
+            if (!Directory.Exists(Path.Combine(ExecutingDirectory, "GameServer Source")))
+            {
+                DownloadAndCompileServer();
+                return;
+            }
+            Directory.Move(Path.Combine(ExecutingDirectory, "GameServer Source"), path);
+
+            Console.Write("Fetching latest version... ");
+            using (var repo = new Repository(path))
+            {
+                var remote = repo.Network.Remotes["origin"];
+                repo.Network.Fetch(remote);
+            }
+            Console.WriteLine("done.");
+
+            Console.Write("Creating the GameServer's config file... ");
+            var configContent = File.ReadAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json.template"));
+            File.AppendAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json"), configContent);
+            Console.WriteLine("done.");
+
+            Console.Write("Restoring nuget packages... ");
+            var nugetProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo(Path.Combine(ExecutingDirectory, "NuGet.exe"), $"restore {path}")
+            };
+            nugetProcess.Start();
+            nugetProcess.WaitForExit();
+            Console.WriteLine("done.");
+
+            Console.Write("Compiling GameServer... ");
+            var slnPath = Path.Combine(path, "GameServer.sln");
+            var msbuildProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo(Path.Combine(ExecutingDirectory, "MSBuild.exe"))
+                {
+                    Arguments = $"\"{slnPath}\" /verbosity:minimal"
+                }
+            };
+            msbuildProcess.Start();
+            msbuildProcess.WaitForExit();
+            Console.WriteLine("done.");
+            DoThingsWithTempStuff();
         }
 
         private static string GetLastCommitMessageFromWeb()
@@ -94,22 +148,23 @@ namespace AutoCompilerForGameServer
             }
         }
 
-        private static void MoveOrDeleteTempStuff()
+        private static void DoThingsWithTempStuff()
         {
-            var nonCompiledStuffPath = Path.Combine(ExecutingDirectory, "CurrentRepository");
-            var compiledStuffOldPath = Path.Combine(ExecutingDirectory, "CurrentRepository", "GameServerApp", "bin", "Debug");
-            var compiledStuffNewPath = Path.Combine(ExecutingDirectory, "Compiled GameServer");
+            var repoPath = Path.Combine(ExecutingDirectory, "CurrentRepository");
+            var newRepoPath = Path.Combine(ExecutingDirectory, "GameServer source");
+            var oldCompiledPath = Path.Combine(ExecutingDirectory, "CurrentRepository", "GameServerApp", "bin", "Debug");
+            var newCompiledPath = Path.Combine(ExecutingDirectory, "Compiled GameServer");
 
-            if (Directory.Exists(compiledStuffNewPath) && Directory.EnumerateFileSystemEntries(compiledStuffNewPath).Any())
+            if (Directory.Exists(newCompiledPath) && Directory.EnumerateFileSystemEntries(newCompiledPath).Any())
             {
                 Console.Write("Deleting old compiled GameServer folder for your sake... ");
-                DeleteDirectory(compiledStuffNewPath);
+                DeleteDirectory(newCompiledPath);
                 Console.WriteLine("done.");
             }
 
             Console.Write("Moving compiled stuff to where you can access :) ... ");
-            Directory.Move(compiledStuffOldPath, compiledStuffNewPath);
-            DeleteDirectory(nonCompiledStuffPath);
+            Directory.Move(oldCompiledPath, newCompiledPath);
+            Directory.Move(repoPath, newRepoPath);
             Console.WriteLine("done.");
         }
 
