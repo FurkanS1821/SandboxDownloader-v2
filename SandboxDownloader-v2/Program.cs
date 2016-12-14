@@ -20,7 +20,7 @@ namespace AutoCompilerForGameServer
             if (!File.Exists(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt")))
             { // First run
                 DownloadAndCompileServer();
-                File.AppendAllText(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt"), lastCommit);
+                File.WriteAllText(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt"), lastCommit);
             }
             else if (File.ReadAllText(Path.Combine(ExecutingDirectory, "LastCommitMessage.txt")) != GetLastCommitMessageFromWeb())
             { // Update required
@@ -54,7 +54,7 @@ namespace AutoCompilerForGameServer
 
             Console.Write("Creating the GameServer's config file... ");
             var configContent = File.ReadAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json.template"));
-            File.AppendAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json"), configContent);
+            File.WriteAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json"), configContent);
             Console.WriteLine("done.");
 
             Console.Write("Restoring nuget packages... ");
@@ -105,7 +105,7 @@ namespace AutoCompilerForGameServer
 
             Console.Write("Creating the GameServer's config file... ");
             var configContent = File.ReadAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json.template"));
-            File.AppendAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json"), configContent);
+            File.WriteAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json"), configContent);
             Console.WriteLine("done.");
 
             Console.Write("Restoring nuget packages... ");
