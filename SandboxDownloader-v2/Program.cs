@@ -219,8 +219,10 @@ namespace AutoCompilerForGameServer
             //File.WriteAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json"), configContent);
             if (configJSON == "")
             {
-                configJSON = File.ReadAllText(Path.Combine(path, "Settings", "GameInfo.json.template"));
+                var path2 = Path.Combine(executingDirectory, "GameServer Source");
+                configJSON = File.ReadAllText(Path.Combine(path2, "GameServerApp", "Settings", "GameInfo.json.template"));
             }
+            Directory.CreateDirectory(Path.Combine(path, "Settings"));
             File.WriteAllText(Path.Combine(path, "Settings", "GameInfo.json"), configJSON);
             Console.WriteLine("done.");
         }
