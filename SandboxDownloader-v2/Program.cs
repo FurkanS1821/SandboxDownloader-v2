@@ -20,6 +20,7 @@ namespace AutoCompilerForGameServer
         static String copyBuildToFolder;
         static bool needsCopied;
         static String configJSON;
+        static bool needsConfig;
 
         private static void Main(string[] args)
         {
@@ -33,9 +34,10 @@ namespace AutoCompilerForGameServer
             commitMessageName = "LastCommitMessage.txt";
             gameServerSourceFileName = "GameServer Source";
             copyBuildToFolder = "Compiled GameServer";
-            needsCopied = false;
+            needsCopied = true;
             pauseAtEnd = true;
             configJSON = "";
+            needsConfig = true;
             
             var p = new NDesk.Options.OptionSet() {
                 { "gameServerRepository=", "The game server repository",
@@ -55,6 +57,9 @@ namespace AutoCompilerForGameServer
                 },
                 { "needsCopied=", "Does it need copied even if it doesn't need built?",
                     (bool v) => needsCopied = v
+                },
+                { "needsConfig=", "Does it need JSON config?",
+                    (bool v) => needsConfig = v
                 },
                 { "pauseAtEnd=", "Should it be pasued at the end?",
                     (bool v) => pauseAtEnd = v
@@ -101,7 +106,7 @@ namespace AutoCompilerForGameServer
             if (needsCompiled)
             {
                 CompileServer();
-                needsCopied = true;
+                //needsCopied = true;
             }
 
             if (needsCopied)
@@ -110,7 +115,7 @@ namespace AutoCompilerForGameServer
                 CopyCompiledBuild();
 
                 //Create config file for copied build
-                CreateConfigFile();
+                if (needsConfig) CreateConfigFile();
             }
             
             Console.Write("Everything is completed.\nPress any key to exit... ");
@@ -190,7 +195,11 @@ namespace AutoCompilerForGameServer
             nugetProcess.StartInfo.RedirectStandardOutput = true;
             nugetProcess.StartInfo.RedirectStandardError = true;
             nugetProcess.StartInfo.CreateNoWindow = true;
+            nugetProcess.OutputDataReceived += (s, e) => Console.WriteLine(e.Data);
+            nugetProcess.ErrorDataReceived += (s, e) => Console.WriteLine(e.Data);
             nugetProcess.Start();
+            nugetProcess.BeginOutputReadLine();
+            nugetProcess.BeginErrorReadLine();
             nugetProcess.WaitForExit();
             Console.WriteLine("done.");
 
@@ -208,7 +217,11 @@ namespace AutoCompilerForGameServer
             msbuildProcess.StartInfo.RedirectStandardOutput = true;
             msbuildProcess.StartInfo.RedirectStandardError = true;
             msbuildProcess.StartInfo.CreateNoWindow = true;
+            msbuildProcess.OutputDataReceived += (s, e) => Console.WriteLine(e.Data);
+            msbuildProcess.ErrorDataReceived += (s, e) => Console.WriteLine(e.Data);
             msbuildProcess.Start();
+            msbuildProcess.BeginOutputReadLine();
+            msbuildProcess.BeginErrorReadLine();
             msbuildProcess.WaitForExit();
             Console.WriteLine("done.");
 
