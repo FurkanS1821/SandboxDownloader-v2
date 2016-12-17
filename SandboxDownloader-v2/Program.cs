@@ -270,7 +270,7 @@ namespace AutoCompilerForGameServer
 
             logicDurationWatch.Start();
             
-            var oldCompiledPath = Path.Combine(executingDirectory, gameServerSourceFileName, "GameServerApp", "bin", "Debug");
+            var oldCompiledPath = Path.Combine(executingDirectory, gameServerSourceFileName, "GameServerApp", "bin", "Release");
             var newCompiledPath = Path.Combine(executingDirectory, copyBuildToFolder);
 
             if (Directory.Exists(newCompiledPath) && Directory.EnumerateFileSystemEntries(newCompiledPath).Any())
