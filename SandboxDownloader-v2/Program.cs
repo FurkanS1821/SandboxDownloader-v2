@@ -290,7 +290,10 @@ namespace AutoCompilerForGameServer
             //Copy gamemode data
             var oldModePath = Path.Combine(executingDirectory, gameServerSourceFileName, "GameServerApp", "Content", "GameMode");
             var newModePath = Path.Combine(executingDirectory, copyBuildToFolder, "Content", "GameMode");
-            CopyDirectory(oldModePath, newModePath, true);
+            if (!Directory.Exists(newModePath))
+            {
+                CopyDirectory(oldModePath, newModePath, true);
+            }
 
             Console.WriteLine("done.");
 
