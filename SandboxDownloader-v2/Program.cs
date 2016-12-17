@@ -210,7 +210,7 @@ namespace AutoCompilerForGameServer
             {
                 StartInfo = new ProcessStartInfo(Path.Combine(executingDirectory, "MSBuild.exe"))
                 {
-                    Arguments = $"\"{slnPath}\" /verbosity:minimal"
+                    Arguments = $"\"{slnPath}\" /verbosity:minimal /p:Configuration=Release"
                 }
             };
             msbuildProcess.StartInfo.UseShellExecute = false;
