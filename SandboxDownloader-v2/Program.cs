@@ -186,6 +186,10 @@ namespace AutoCompilerForGameServer
             {
                 StartInfo = new ProcessStartInfo(Path.Combine(executingDirectory, "NuGet.exe"), $"restore \"{path}\"")
             };
+            nugetProcess.StartInfo.UseShellExecute = false;
+            nugetProcess.StartInfo.RedirectStandardOutput = true;
+            nugetProcess.StartInfo.RedirectStandardError = true;
+            nugetProcess.StartInfo.CreateNoWindow = true;
             nugetProcess.Start();
             nugetProcess.WaitForExit();
             Console.WriteLine("done.");
@@ -200,6 +204,10 @@ namespace AutoCompilerForGameServer
                     Arguments = $"\"{slnPath}\" /verbosity:minimal"
                 }
             };
+            msbuildProcess.StartInfo.UseShellExecute = false;
+            msbuildProcess.StartInfo.RedirectStandardOutput = true;
+            msbuildProcess.StartInfo.RedirectStandardError = true;
+            msbuildProcess.StartInfo.CreateNoWindow = true;
             msbuildProcess.Start();
             msbuildProcess.WaitForExit();
             Console.WriteLine("done.");
