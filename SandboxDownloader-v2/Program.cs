@@ -89,14 +89,12 @@ namespace AutoCompilerForGameServer
 
             if (!File.Exists(Path.Combine(executingDirectory, commitMessageName)))
             { // First run
-                File.WriteAllText(Path.Combine(executingDirectory, commitMessageName), lastCommit);
                 DownloadServer();
                 needsCompiled = true;
             }
             else if (File.ReadAllText(Path.Combine(executingDirectory, commitMessageName)) != GetLastCommitMessageFromWeb())
             { // Update required
                 Console.WriteLine("Update found. Updating.");
-                File.WriteAllText(Path.Combine(executingDirectory, commitMessageName), lastCommit);
                 FetchServer();
                 needsCompiled = true;
             }
@@ -108,6 +106,8 @@ namespace AutoCompilerForGameServer
             if (needsCompiled)
             {
                 CompileServer();
+
+                File.WriteAllText(Path.Combine(executingDirectory, commitMessageName), lastCommit);
                 //needsCopied = true;
             }
 
@@ -212,7 +212,7 @@ namespace AutoCompilerForGameServer
             {
                 StartInfo = new ProcessStartInfo(Path.Combine(executingDirectory, "MSBuild.exe"))
                 {// /t:Build,AfterBuild
-                    Arguments = $"\"{slnPath}\" /t:GameServerApp:Rebuild /verbosity:minimal /property:Configuration=" +configurationMode
+                    Arguments = $"\"{slnPath}\" /verbosity:minimal /property:Configuration=" +configurationMode
                 }
             };
             msbuildProcess.StartInfo.UseShellExecute = false;
