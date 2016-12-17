@@ -210,7 +210,7 @@ namespace AutoCompilerForGameServer
             {
                 StartInfo = new ProcessStartInfo(Path.Combine(executingDirectory, "MSBuild.exe"))
                 {
-                    Arguments = $"\"{slnPath}\" /verbosity:minimal /p:Configuration=Release"
+                    Arguments = $"\"{slnPath}\" /verbosity:minimal /property:Configuration=Release"
                 }
             };
             msbuildProcess.StartInfo.UseShellExecute = false;
@@ -274,15 +274,21 @@ namespace AutoCompilerForGameServer
             var oldCompiledPath = Path.Combine(executingDirectory, gameServerSourceFileName, "GameServerApp", "bin", "Release");
             var newCompiledPath = Path.Combine(executingDirectory, copyBuildToFolder);
 
+            
             if (Directory.Exists(newCompiledPath) && Directory.EnumerateFileSystemEntries(newCompiledPath).Any())
             {
-                Console.Write("Deleting old compiled GameServer folder for your sake... ");
+                Console.WriteLine("Replacing the old compiled with new compiled");
                 DeleteDirectory(newCompiledPath);
                 Console.WriteLine("done.");
             }
 
             CopyDirectory(oldCompiledPath, newCompiledPath, true);
-            
+
+            //Copy gamemode data
+            var oldModePath = Path.Combine(executingDirectory, gameServerSourceFileName, "GameServerApp", "Content", "GameMode");
+            var newModePath = Path.Combine(executingDirectory, copyBuildToFolder, "Content", "GameMode");
+            CopyDirectory(oldModePath, newModePath, true);
+
             Console.WriteLine("done.");
 
             logicDurationWatch.Stop();
@@ -345,6 +351,7 @@ namespace AutoCompilerForGameServer
                     CopyDirectory(subdir.FullName, temppath, copySubDirs);
                 }
             }
+
         }
     }
 
