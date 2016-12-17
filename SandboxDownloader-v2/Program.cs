@@ -266,6 +266,7 @@ namespace AutoCompilerForGameServer
 
         private static void CopyCompiledBuild()
         {
+            Console.WriteLine("Copying game server");
             var logicDurationWatch = new Stopwatch();
 
             logicDurationWatch.Start();
