@@ -90,11 +90,15 @@ namespace AutoCompilerForGameServer
                 //Get current commit
                 String lastUpdate = GetLastRepositoryCommit(gameServerSourceFileName, repositoryBranch);
 
+                Console.WriteLine("Old Commit: " + lastUpdate);
+
                 FetchServer();
 
                 //Get current commit, compare to past
                 String newUpdate = GetLastRepositoryCommit(gameServerSourceFileName, repositoryBranch);
-                
+
+                Console.WriteLine("New Commit: " + newUpdate);
+
                 needsCompiled = !lastUpdate.Equals(newUpdate);
             } else
             {
@@ -162,7 +166,13 @@ namespace AutoCompilerForGameServer
             using (var repo = new Repository(path))
             {
                 var remote = repo.Network.Remotes["origin"];
-                repo.Network.Fetch(remote);
+
+                LibGit2Sharp.PullOptions options = new LibGit2Sharp.PullOptions();
+                //options.FetchOptions = new FetchOptions();
+                repo.Network.Pull(new LibGit2Sharp.Signature("LeagueUI", "LeagueUI", new DateTimeOffset(DateTime.Now)), options);
+
+
+                //repo.Network.Fetch(remote);
             }
 
             logicDurationWatch.Stop();
