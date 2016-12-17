@@ -81,6 +81,8 @@ namespace AutoCompilerForGameServer
             
             var needsCompiled = false;
 
+            Console.WriteLine("Repository: " + gameServerRepository + ", Branch: " + repositoryBranch);
+
             if (IsRepositoryValid(gameServerSourceFileName, repositoryBranch))
             {
                 Console.WriteLine("Repository is valid, fetching updates.");
