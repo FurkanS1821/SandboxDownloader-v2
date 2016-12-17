@@ -21,6 +21,7 @@ namespace AutoCompilerForGameServer
         static bool needsCopied;
         static String configJSON;
         static bool needsConfig;
+        static String configurationMode;
 
         private static void Main(string[] args)
         {
@@ -32,13 +33,14 @@ namespace AutoCompilerForGameServer
             gameServerRepository = "https://github.com/LeagueSandbox/GameServer.git";
             repositoryBranch = "master";
             commitMessageName = "LastCommitMessage.txt";
-            gameServerSourceFileName = "GameServer Source";
-            copyBuildToFolder = "Compiled GameServer";
+            gameServerSourceFileName = "GameServer-Source";
+            copyBuildToFolder = "Compiled-GameServer";
             needsCopied = true;
             pauseAtEnd = true;
             configJSON = "";
             needsConfig = true;
-            
+            configurationMode = "Release";
+
             var p = new NDesk.Options.OptionSet() {
                 { "gameServerRepository=", "The game server repository",
                     v => gameServerRepository = v
@@ -209,8 +211,8 @@ namespace AutoCompilerForGameServer
             var msbuildProcess = new Process
             {
                 StartInfo = new ProcessStartInfo(Path.Combine(executingDirectory, "MSBuild.exe"))
-                {
-                    Arguments = $"\"{slnPath}\" /verbosity:minimal /property:Configuration=Release"
+                {// /t:Build,AfterBuild
+                    Arguments = $"\"{slnPath}\" /t:GameServerApp:Rebuild /verbosity:minimal /property:Configuration=" +configurationMode
                 }
             };
             msbuildProcess.StartInfo.UseShellExecute = false;
@@ -223,6 +225,7 @@ namespace AutoCompilerForGameServer
             msbuildProcess.BeginOutputReadLine();
             msbuildProcess.BeginErrorReadLine();
             msbuildProcess.WaitForExit();
+
             Console.WriteLine("done.");
 
             logicDurationWatch.Stop();
@@ -240,7 +243,7 @@ namespace AutoCompilerForGameServer
             //File.WriteAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json"), configContent);
             if (configJSON == "")
             {
-                var path2 = Path.Combine(executingDirectory, "GameServer Source");
+                var path2 = Path.Combine(executingDirectory, gameServerSourceFileName);
                 configJSON = File.ReadAllText(Path.Combine(path2, "GameServerApp", "Settings", "GameInfo.json.template"));
             }
             Directory.CreateDirectory(Path.Combine(path, "Settings"));
@@ -271,7 +274,7 @@ namespace AutoCompilerForGameServer
 
             logicDurationWatch.Start();
             
-            var oldCompiledPath = Path.Combine(executingDirectory, gameServerSourceFileName, "GameServerApp", "bin", "Release");
+            var oldCompiledPath = Path.Combine(executingDirectory, gameServerSourceFileName, "GameServerApp", "bin", configurationMode);
             var newCompiledPath = Path.Combine(executingDirectory, copyBuildToFolder);
 
             
