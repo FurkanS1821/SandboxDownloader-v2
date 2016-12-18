@@ -165,14 +165,20 @@ namespace AutoCompilerForGameServer
             Console.Write("Fetching latest version... ");
             using (var repo = new Repository(path))
             {
+                /*
+                LibGit2Sharp.PullOptions options = new LibGit2Sharp.PullOptions();
+                options.FetchOptions = new FetchOptions();
+                repo.Network.Pull(new LibGit2Sharp.Signature("Sandbox", "Sandbox", new DateTimeOffset(DateTime.Now)), options);
+                */
+
+                // "origin" is the default name given by a Clone operation
+                // to the created remote
                 var remote = repo.Network.Remotes["origin"];
 
-                LibGit2Sharp.PullOptions options = new LibGit2Sharp.PullOptions();
-                //options.FetchOptions = new FetchOptions();
-                repo.Network.Pull(new LibGit2Sharp.Signature("LeagueUI", "LeagueUI", new DateTimeOffset(DateTime.Now)), options);
-
-
-                //repo.Network.Fetch(remote);
+                // Retrieve the changes from the remote repository
+                // (eg. new commits that have been pushed by other contributors)
+                repo.Network.Fetch(remote);
+                repo.Checkout("origin/"+repositoryBranch);
             }
 
             logicDurationWatch.Stop();
