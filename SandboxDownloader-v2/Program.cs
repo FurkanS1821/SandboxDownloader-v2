@@ -21,6 +21,7 @@ namespace AutoCompilerForGameServer
         static String configJSON;
         static bool needsConfig;
         static String configurationMode;
+        static bool onlyPrintBranches;
 
         private static void Main(string[] args)
         {
@@ -38,6 +39,7 @@ namespace AutoCompilerForGameServer
             configJSON = "";
             needsConfig = true;
             configurationMode = "Release";
+            onlyPrintBranches = false;
 
             var p = new NDesk.Options.OptionSet() {
                 { "gameServerRepository=", "The game server repository",
@@ -63,6 +65,9 @@ namespace AutoCompilerForGameServer
                 },
                 { "configJSON=", "The config JSON for the compiled game server.",
                     v => configJSON = v
+                },
+                { "onlyPrintBranches=", "Only print the repository branches and exit",
+                    (bool v) => onlyPrintBranches = v
                 }
             };
             
@@ -74,7 +79,7 @@ namespace AutoCompilerForGameServer
             {
                 Console.Write("Command line error: ");
                 Console.WriteLine(e.Message);
-                return;
+                return; 
             }
 
             Console.WriteLine("Welcome to Furkan_S's GameServer updater!");
@@ -82,6 +87,24 @@ namespace AutoCompilerForGameServer
             var needsCompiled = false;
 
             Console.WriteLine("Repository: " + gameServerRepository + ", Branch: " + repositoryBranch);
+
+
+            if (onlyPrintBranches)
+            {
+                Console.WriteLine("Repository Branches:");
+                foreach (Reference refer in Repository.ListRemoteReferences(gameServerRepository))
+                {
+                    if (refer.IsLocalBranch)
+                    {
+                        String name = refer.CanonicalName;
+                        name = name.Replace("refs/heads/", "");
+                        Console.WriteLine(name);
+                    }
+                }
+                Console.WriteLine("End Repository Branches");
+                return;
+            }
+            
 
             if (IsRepositoryValid(gameServerSourceFileName, repositoryBranch))
             {
@@ -107,31 +130,6 @@ namespace AutoCompilerForGameServer
                 DownloadServer();
                 needsCompiled = true;
             }
-            Console.WriteLine("Repository Branches:");
-            var path = Path.Combine(executingDirectory, gameServerSourceFileName);
-            using (var repo = new Repository(path))
-            {
-                foreach (Branch b in repo.Branches)
-                {
-                    Console.WriteLine("Full name: " + b.CanonicalName);
-                }
-
-                /*
-                LibGit2Sharp.PullOptions options = new LibGit2Sharp.PullOptions();
-                options.FetchOptions = new FetchOptions();
-                repo.Network.Pull(new LibGit2Sharp.Signature("Sandbox", "Sandbox", new DateTimeOffset(DateTime.Now)), options);
-                */
-
-                // "origin" is the default name given by a Clone operation
-                // to the created remote
-                var remote = repo.Network.Remotes["origin"];
-
-                // Retrieve the changes from the remote repository
-                // (eg. new commits that have been pushed by other contributors)
-                repo.Network.Fetch(remote);
-                repo.Checkout("origin/" + repositoryBranch);
-            }
-            Console.WriteLine("End Repository Branch");
 
             if (needsCompiled)
             {
