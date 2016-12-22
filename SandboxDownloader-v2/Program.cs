@@ -107,6 +107,31 @@ namespace AutoCompilerForGameServer
                 DownloadServer();
                 needsCompiled = true;
             }
+            Console.WriteLine("Repository Branches:");
+            var path = Path.Combine(executingDirectory, gameServerSourceFileName);
+            using (var repo = new Repository(path))
+            {
+                foreach (Branch b in repo.Branches)
+                {
+                    Console.WriteLine("Full name: " + b.CanonicalName);
+                }
+
+                /*
+                LibGit2Sharp.PullOptions options = new LibGit2Sharp.PullOptions();
+                options.FetchOptions = new FetchOptions();
+                repo.Network.Pull(new LibGit2Sharp.Signature("Sandbox", "Sandbox", new DateTimeOffset(DateTime.Now)), options);
+                */
+
+                // "origin" is the default name given by a Clone operation
+                // to the created remote
+                var remote = repo.Network.Remotes["origin"];
+
+                // Retrieve the changes from the remote repository
+                // (eg. new commits that have been pushed by other contributors)
+                repo.Network.Fetch(remote);
+                repo.Checkout("origin/" + repositoryBranch);
+            }
+            Console.WriteLine("End Repository Branch");
 
             if (needsCompiled)
             {
