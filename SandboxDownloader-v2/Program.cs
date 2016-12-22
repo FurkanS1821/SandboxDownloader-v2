@@ -102,6 +102,7 @@ namespace AutoCompilerForGameServer
                     }
                 }
                 Console.WriteLine("End Repository Branches");
+                if (pauseAtEnd) Console.ReadKey(true);
                 return;
             }
             
