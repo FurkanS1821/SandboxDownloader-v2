@@ -15,13 +15,13 @@ namespace AutoCompilerForGameServer
         static String gameServerRepository;
         static String repositoryBranch;
         static bool pauseAtEnd;
-        static String commitMessageName;
         static String gameServerSourceFileName;
         static String copyBuildToFolder;
         static bool needsCopied;
         static String configJSON;
         static bool needsConfig;
         static String configurationMode;
+        static bool onlyPrintBranches;
 
         private static void Main(string[] args)
         {
@@ -32,7 +32,6 @@ namespace AutoCompilerForGameServer
             executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             gameServerRepository = "https://github.com/LeagueSandbox/GameServer.git";
             repositoryBranch = "master";
-            commitMessageName = "LastCommitMessage.txt";
             gameServerSourceFileName = "GameServer-Source";
             copyBuildToFolder = "Compiled-GameServer";
             needsCopied = true;
@@ -40,6 +39,7 @@ namespace AutoCompilerForGameServer
             configJSON = "";
             needsConfig = true;
             configurationMode = "Release";
+            onlyPrintBranches = false;
 
             var p = new NDesk.Options.OptionSet() {
                 { "gameServerRepository=", "The game server repository",
@@ -47,9 +47,6 @@ namespace AutoCompilerForGameServer
                 },
                 { "repositoryBranch=", "The game server repository branch",
                     v => repositoryBranch = v
-                },
-                { "commitMessageName=", "Commit message file name",
-                    v => commitMessageName = v
                 },
                 { "gameServerSourceFileName=", "Game server source folder name",
                     v => gameServerSourceFileName = v
@@ -68,6 +65,9 @@ namespace AutoCompilerForGameServer
                 },
                 { "configJSON=", "The config JSON for the compiled game server.",
                     v => configJSON = v
+                },
+                { "onlyPrintBranches=", "Only print the repository branches and exit",
+                    (bool v) => onlyPrintBranches = v
                 }
             };
             
@@ -79,40 +79,68 @@ namespace AutoCompilerForGameServer
             {
                 Console.Write("Command line error: ");
                 Console.WriteLine(e.Message);
-                return;
+                return; 
             }
 
-            Console.WriteLine("Welcome to my GameServer updater!");
-            var lastCommit = GetLastCommitMessageFromWeb();
-
+            Console.WriteLine("Welcome to Furkan_S's GameServer updater!");
+            
             var needsCompiled = false;
 
-            if (!File.Exists(Path.Combine(executingDirectory, commitMessageName)))
-            { // First run
+            Console.WriteLine("Repository: " + gameServerRepository + ", Branch: " + repositoryBranch);
+
+
+            if (onlyPrintBranches)
+            {
+                Console.WriteLine("Repository Branches:");
+                foreach (Reference refer in Repository.ListRemoteReferences(gameServerRepository))
+                {
+                    if (refer.IsLocalBranch)
+                    {
+                        String name = refer.CanonicalName;
+                        name = name.Replace("refs/heads/", "");
+                        Console.WriteLine(name);
+                    }
+                }
+                Console.WriteLine("End Repository Branches");
+                if (pauseAtEnd) Console.ReadKey(true);
+                return;
+            }
+            
+
+            if (IsRepositoryValid(gameServerSourceFileName, repositoryBranch))
+            {
+                Console.WriteLine("Repository is valid, fetching updates.");
+
+                //Get current commit
+                String lastUpdate = GetLastRepositoryCommit(gameServerSourceFileName, repositoryBranch);
+
+                Console.WriteLine("Old Commit: " + lastUpdate);
+
+                FetchServer();
+
+                //Get current commit, compare to past
+                String newUpdate = GetLastRepositoryCommit(gameServerSourceFileName, repositoryBranch);
+
+                Console.WriteLine("New Commit: " + newUpdate);
+
+                needsCompiled = !lastUpdate.Equals(newUpdate);
+            } else
+            {
+                //Download repository
+                Console.WriteLine("Repository is invalid, downloading updates.");
                 DownloadServer();
                 needsCompiled = true;
-            }
-            else if (File.ReadAllText(Path.Combine(executingDirectory, commitMessageName)) != GetLastCommitMessageFromWeb())
-            { // Update required
-                Console.WriteLine("Update found. Updating.");
-                FetchServer();
-                needsCompiled = true;
-            }
-            else
-            { // Updated already
-                Console.WriteLine("Your GameServer is already updated.");
             }
 
             if (needsCompiled)
             {
+                Console.WriteLine("Compiling server.");
                 CompileServer();
-
-                File.WriteAllText(Path.Combine(executingDirectory, commitMessageName), lastCommit);
-                //needsCopied = true;
             }
 
             if (needsCopied)
             {
+                Console.WriteLine("Copying server.");
                 //Copy server to build location
                 CopyCompiledBuild();
 
@@ -144,11 +172,10 @@ namespace AutoCompilerForGameServer
                 DeleteDirectory(path);
             }
             Repository.Clone(gameServerRepository, path, cloneOptions);
-            Console.WriteLine("done.");
 
             logicDurationWatch.Stop();
             var _timeElapsed = logicDurationWatch.ElapsedMilliseconds;
-            Console.WriteLine("Time took for download: " + _timeElapsed / 1000.0 + " seconds");
+            Console.WriteLine("Time took for full download: " + _timeElapsed / 1000.0 + " seconds");
         }
 
         private static void FetchServer()
@@ -157,20 +184,26 @@ namespace AutoCompilerForGameServer
 
             logicDurationWatch.Start();
 
-            var path = Path.Combine(executingDirectory, gameServerSourceFileName);//, "CurrentRepository");
-            if (!Directory.Exists(Path.Combine(executingDirectory, gameServerSourceFileName)))
-            {
-                DownloadServer();
-                return;
-            }
+            var path = Path.Combine(executingDirectory, gameServerSourceFileName);
 
             Console.Write("Fetching latest version... ");
             using (var repo = new Repository(path))
             {
+                /*
+                LibGit2Sharp.PullOptions options = new LibGit2Sharp.PullOptions();
+                options.FetchOptions = new FetchOptions();
+                repo.Network.Pull(new LibGit2Sharp.Signature("Sandbox", "Sandbox", new DateTimeOffset(DateTime.Now)), options);
+                */
+
+                // "origin" is the default name given by a Clone operation
+                // to the created remote
                 var remote = repo.Network.Remotes["origin"];
+
+                // Retrieve the changes from the remote repository
+                // (eg. new commits that have been pushed by other contributors)
                 repo.Network.Fetch(remote);
+                repo.Checkout("origin/"+repositoryBranch);
             }
-            Console.WriteLine("done.");
 
             logicDurationWatch.Stop();
             var _timeElapsed = logicDurationWatch.ElapsedMilliseconds;
@@ -187,8 +220,7 @@ namespace AutoCompilerForGameServer
             Console.WriteLine("Game server path: " + path);
 
             Console.Write("Restoring nuget packages... ");
-
-            Console.WriteLine("Nuget path: " + Path.Combine(executingDirectory, "NuGet.exe"));
+            
             var nugetProcess = new Process
             {
                 StartInfo = new ProcessStartInfo(Path.Combine(executingDirectory, "NuGet.exe"), $"restore \"{path}\"")
@@ -203,11 +235,9 @@ namespace AutoCompilerForGameServer
             nugetProcess.BeginOutputReadLine();
             nugetProcess.BeginErrorReadLine();
             nugetProcess.WaitForExit();
-            Console.WriteLine("done.");
 
-            Console.Write("Compiling GameServer... ");
+            Console.Write("Running MSBuild... ");
             var slnPath = Path.Combine(path, "GameServer.sln");
-            Console.WriteLine("Compile server path: " + slnPath);
             var msbuildProcess = new Process
             {
                 StartInfo = new ProcessStartInfo(Path.Combine(executingDirectory, "MSBuild.exe"))
@@ -226,8 +256,6 @@ namespace AutoCompilerForGameServer
             msbuildProcess.BeginErrorReadLine();
             msbuildProcess.WaitForExit();
 
-            Console.WriteLine("done.");
-
             logicDurationWatch.Stop();
             var _timeElapsed = logicDurationWatch.ElapsedMilliseconds;
             Console.WriteLine("Time took for compile: " + _timeElapsed / 1000.0 + " seconds");
@@ -236,11 +264,8 @@ namespace AutoCompilerForGameServer
         private static void CreateConfigFile()
         {
             var path = Path.Combine(executingDirectory, copyBuildToFolder);
-            //var path = Path.Combine(executingDirectory, "GameServer Source");//, "CurrentRepository");
 
             Console.Write("Creating the GameServer's config file... ");
-            //var configContent = File.ReadAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json.template"));
-            //File.WriteAllText(Path.Combine(path, "GameServerApp", "Settings", "GameInfo.json"), configContent);
             if (configJSON == "")
             {
                 var path2 = Path.Combine(executingDirectory, gameServerSourceFileName);
@@ -248,41 +273,50 @@ namespace AutoCompilerForGameServer
             }
             Directory.CreateDirectory(Path.Combine(path, "Settings"));
             File.WriteAllText(Path.Combine(path, "Settings", "GameInfo.json"), configJSON);
-            Console.WriteLine("done.");
         }
 
-        private static string GetLastCommitMessageFromWeb()
+        private static String GetLastRepositoryCommit(String gameServerSourceFileName, String repositoryBranch)
         {
-            using (var client = new HttpClient())
+            var path = Path.Combine(executingDirectory, gameServerSourceFileName);
+
+            if (!Directory.Exists(path))
             {
-                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; WOW64; Trident/6.0)");
-
-                using (var response = client.GetAsync("https://api.github.com/repos/LeagueSandbox/GameServer/commits").Result)
-                {
-                    var json = response.Content.ReadAsStringAsync().Result;
-
-                    dynamic commits = JArray.Parse(json);
-                    return commits[0].commit.message;
-                }
+                return "";
+            }
+            
+            using (var repo = new Repository(path))
+            {
+                var remote = repo.Network.Remotes["origin"];
+                Commit firstCommit = repo.Commits.First();
+                return firstCommit.Id.ToString() + firstCommit.Author.ToString() + firstCommit.MessageShort;
             }
         }
 
+        private static bool IsRepositoryValid(String gameServerSourceFileName, String repositoryBranch)
+        {
+            var path = Path.Combine(executingDirectory, gameServerSourceFileName);//"CurrentRepository");
+
+            if (!Directory.Exists(path))
+            {
+                return false;
+            }
+
+            var cloneOptions = new CloneOptions { BranchName = repositoryBranch, RecurseSubmodules = true };
+            return Repository.IsValid(path);
+        }
+        
         private static void CopyCompiledBuild()
         {
-            Console.WriteLine("Copying game server");
             var logicDurationWatch = new Stopwatch();
 
             logicDurationWatch.Start();
             
             var oldCompiledPath = Path.Combine(executingDirectory, gameServerSourceFileName, "GameServerApp", "bin", configurationMode);
             var newCompiledPath = Path.Combine(executingDirectory, copyBuildToFolder);
-
             
             if (Directory.Exists(newCompiledPath) && Directory.EnumerateFileSystemEntries(newCompiledPath).Any())
             {
-                Console.WriteLine("Replacing the old compiled with new compiled");
                 DeleteDirectory(newCompiledPath);
-                Console.WriteLine("done.");
             }
 
             CopyDirectory(oldCompiledPath, newCompiledPath, true);
@@ -294,8 +328,6 @@ namespace AutoCompilerForGameServer
             {
                 CopyDirectory(oldModePath, newModePath, true);
             }
-
-            Console.WriteLine("done.");
 
             logicDurationWatch.Stop();
             var _timeElapsed = logicDurationWatch.ElapsedMilliseconds;
@@ -357,8 +389,6 @@ namespace AutoCompilerForGameServer
                     CopyDirectory(subdir.FullName, temppath, copySubDirs);
                 }
             }
-
         }
     }
-
 }
