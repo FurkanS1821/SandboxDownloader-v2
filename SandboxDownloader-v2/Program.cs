@@ -122,7 +122,7 @@ namespace AutoCompilerForGameServer
 
                 Console.WriteLine($"New Commit: {newUpdate}");
 
-                needsCompiled = !lastUpdate.Equals(newUpdate);
+                needsCompiled = true; // !lastUpdate.Equals(newUpdate);
             }
             else
             {
@@ -230,7 +230,24 @@ namespace AutoCompilerForGameServer
             
             var nugetProcess = new Process
             {
-                StartInfo = new ProcessStartInfo(Path.Combine(_executingDirectory, "NuGet.exe"), $"restore \"{path}\"")
+                StartInfo = new ProcessStartInfo("NuGet.exe", $"restore \"{path}\"")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+            nugetProcess.OutputDataReceived += (s, e) => Console.WriteLine(e.Data);
+            nugetProcess.ErrorDataReceived += (s, e) => Console.WriteLine(e.Data);
+            nugetProcess.Start();
+            nugetProcess.BeginOutputReadLine();
+            nugetProcess.BeginErrorReadLine();
+            nugetProcess.WaitForExit();
+
+            nugetProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo("NuGet.exe", $"update")
                 {
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
@@ -249,7 +266,7 @@ namespace AutoCompilerForGameServer
             var slnPath = Path.Combine(path, "GameServer.sln");
             var msbuildProcess = new Process
             {
-                StartInfo = new ProcessStartInfo(Path.Combine(_executingDirectory, "MSBuild", "MSBuild.exe"))
+                StartInfo = new ProcessStartInfo("MSBuild.exe")
                 {// /t:Build,AfterBuild
                     Arguments = $"\"{slnPath}\" /verbosity:minimal /property:Configuration={_configurationMode}",
                     UseShellExecute = false,
@@ -278,7 +295,7 @@ namespace AutoCompilerForGameServer
             if (string.IsNullOrEmpty(_configJson))
             {
                 var path2 = Path.Combine(_executingDirectory, _gameServerSourceFileName);
-                _configJson = File.ReadAllText(Path.Combine(path2, "GameServerApp", "Settings", "GameInfo.json.template"));
+                _configJson = File.ReadAllText(Path.Combine(path2, "GameServerConsole", "Settings", "GameInfo.json.template"));
             }
             Directory.CreateDirectory(Path.Combine(path, "Settings"));
             File.WriteAllText(Path.Combine(path, "Settings", "GameInfo.json"), _configJson);
@@ -320,7 +337,7 @@ namespace AutoCompilerForGameServer
 
             logicDurationWatch.Start();
             
-            var oldCompiledPath = Path.Combine(_executingDirectory, _gameServerSourceFileName, "GameServerApp", "bin", _configurationMode);
+            var oldCompiledPath = Path.Combine(_executingDirectory, _gameServerSourceFileName, "GameServerConsole", "bin", _configurationMode);
             var newCompiledPath = Path.Combine(_executingDirectory, _copyBuildToFolder);
             
             if (Directory.Exists(newCompiledPath) && Directory.EnumerateFileSystemEntries(newCompiledPath).Any())
@@ -329,14 +346,6 @@ namespace AutoCompilerForGameServer
             }
 
             CopyDirectory(oldCompiledPath, newCompiledPath, true);
-
-            //Copy gamemode data
-            var oldModePath = Path.Combine(_executingDirectory, _gameServerSourceFileName, "GameServerApp", "Content", "GameMode");
-            var newModePath = Path.Combine(_executingDirectory, _copyBuildToFolder, "Content", "GameMode");
-            if (!Directory.Exists(newModePath))
-            {
-                CopyDirectory(oldModePath, newModePath, true);
-            }
 
             logicDurationWatch.Stop();
             var timeElapsed = logicDurationWatch.ElapsedMilliseconds;
