@@ -122,7 +122,7 @@ namespace AutoCompilerForGameServer
 
                 Console.WriteLine($"New Commit: {newUpdate}");
 
-                needsCompiled = true; // !lastUpdate.Equals(newUpdate);
+                needsCompiled = !lastUpdate.Equals(newUpdate);
             }
             else
             {
@@ -262,25 +262,25 @@ namespace AutoCompilerForGameServer
             nugetProcess.BeginErrorReadLine();
             nugetProcess.WaitForExit();
 
-            Console.Write("Running MSBuild... ");
+            Console.Write("Running dotnet... ");
             var slnPath = Path.Combine(path, "GameServer.sln");
-            var msbuildProcess = new Process
+            var buildProcess = new Process
             {
-                StartInfo = new ProcessStartInfo("MSBuild.exe")
-                {// /t:Build,AfterBuild
-                    Arguments = $"\"{slnPath}\" /verbosity:minimal /property:Configuration={_configurationMode}",
+                StartInfo = new ProcessStartInfo("cmd.exe")
+                {
+                    Arguments = $"/c dotnet build \"{slnPath}\" --configuration Release",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 }
             };
-            msbuildProcess.OutputDataReceived += (s, e) => Console.WriteLine(e.Data);
-            msbuildProcess.ErrorDataReceived += (s, e) => Console.WriteLine(e.Data);
-            msbuildProcess.Start();
-            msbuildProcess.BeginOutputReadLine();
-            msbuildProcess.BeginErrorReadLine();
-            msbuildProcess.WaitForExit();
+            buildProcess.OutputDataReceived += (s, e) => Console.WriteLine(e.Data);
+            buildProcess.ErrorDataReceived += (s, e) => Console.WriteLine(e.Data);
+            buildProcess.Start();
+            buildProcess.BeginOutputReadLine();
+            buildProcess.BeginErrorReadLine();
+            buildProcess.WaitForExit();
 
             logicDurationWatch.Stop();
             var timeElapsed = logicDurationWatch.ElapsedMilliseconds;
