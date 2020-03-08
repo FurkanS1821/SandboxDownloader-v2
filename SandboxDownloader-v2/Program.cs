@@ -226,42 +226,6 @@ namespace AutoCompilerForGameServer
             var path = Path.Combine(_executingDirectory, _gameServerSourceFileName);//, "CurrentRepository");
             Console.WriteLine($"Game server path: {path}");
 
-            Console.Write("Restoring nuget packages... ");
-            
-            var nugetProcess = new Process
-            {
-                StartInfo = new ProcessStartInfo("NuGet.exe", $"restore \"{path}\"")
-                {
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-            nugetProcess.OutputDataReceived += (s, e) => Console.WriteLine(e.Data);
-            nugetProcess.ErrorDataReceived += (s, e) => Console.WriteLine(e.Data);
-            nugetProcess.Start();
-            nugetProcess.BeginOutputReadLine();
-            nugetProcess.BeginErrorReadLine();
-            nugetProcess.WaitForExit();
-
-            nugetProcess = new Process
-            {
-                StartInfo = new ProcessStartInfo("NuGet.exe", $"update")
-                {
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-            nugetProcess.OutputDataReceived += (s, e) => Console.WriteLine(e.Data);
-            nugetProcess.ErrorDataReceived += (s, e) => Console.WriteLine(e.Data);
-            nugetProcess.Start();
-            nugetProcess.BeginOutputReadLine();
-            nugetProcess.BeginErrorReadLine();
-            nugetProcess.WaitForExit();
-
             Console.Write("Running dotnet... ");
             var slnPath = Path.Combine(path, "GameServer.sln");
             var buildProcess = new Process
